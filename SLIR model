@@ -1,0 +1,90 @@
+function ydot = f4(t,y,theta,xdata)
+
+DS = y(1);
+DL = y(2);
+DI = y(3);
+DR=0;
+DN= DS+DL+DI;
+
+%P=8;
+deltt=0.01;
+j=1;
+DSS=DS;
+DLL=DL;
+DII=DI;
+DNN= DS+DL+DI;
+% control variables are assumed to be saved
+% at each time unit interval
+Area=4E+5;
+S =4.2E+7/Area; %xdata(ceil(t),2); %%%%%%%%%%Area
+L =0;
+I=0;
+SumI=0;
+SumII=0;
+SumIII=0;
+Vac=0;
+N =S+L;
+%Virus   = xdata(ceil(t),3);
+Vaccination = xdata(ceil(t),4)/Area; %%%%%%%%%%%%%%Area
+
+b=0.013;
+d=0.006;
+
+birth=theta(1);
+death=theta(2);
+r=birth-death;
+sigma=theta(3);
+alpha=theta(4);
+betaD=theta(5);
+betaH=theta(6);
+%scale=theta(7);
+k=theta(7);
+v=0.07;%vaccination rate
+e=0.6;%efficacy
+c=0;%culling
+lamda=1;
+
+Z=1;
+for X = 1:17;
+    for Y = 1:100;
+        V(Z)=Vaccination(X);
+        Z=Z+1;
+    end
+end
+
+K=k;
+for i = 2:1700   
+DS(i)= DS(i-1) + (DN(i-1)*birth + lamda*DR(i-1) -v*e*DS(i-1) -c*DS(i-1) - DS(i-1)*death - DS(i-1)*betaD*DI(i-1)  - DS(i-1)*r*DN(i-1)/K)*deltt ;
+DL(i)= DL(i-1) + (DS(i-1)*DI(i-1)*betaD -v*e*DL(i-1) -c*DL(i-1)- DL(i-1)*death - DL(i-1)*sigma - DL(i-1)*r*DN(i-1)/K)*deltt ;
+DI(i)= DI(i-1) + (DL(i-1)*sigma - DI(i-1)*death - DI(i-1)*alpha - DI(i-1)*r*DN(i-1)/K)*deltt;
+DR(i)= DR(i-1) + (v*e*(DS(i-1)+DL(i-1))- DR(i-1)*death - DR(i-1)*r*DN(i-1)/K - lamda*DR(i-1))*deltt; 
+DN(i)= DS(i) + DL(i) + DI(i) + DR(i);
+
+S(i)=S(i-1)+(b*N(i-1)+Vac(i-1)-d*S(i-1)-betaH*DI(i-1)*S(i-1)-V(i-1)/5)*deltt;
+L(i)=L(i-1)+(betaH*DI(i-1)*S(i-1)-d*L(i-1)-6*L(i-1))*deltt;
+I(i)=I(i-1)+(6*L(i-1)-d*I(i-1)-I(i-1))*deltt;
+SumI(i)=SumI(i-1)+(betaH*DI(i-1)*S(i-1))*deltt;
+Vac(i)=Vac(i-1)+(V(i-1)/5 - Vac(i-1)-d*Vac(i-1))*deltt;
+N(i)=S(i-1)+L(i-1)+Vac(i-1);
+
+if mod(i,100)==0;
+DSS(j)=DS(i);
+DLL(j)=DL(i);
+DII(j)=DI(i);
+SumII(j)=SumI(i);
+
+    if j==1;
+    SumIII(j)=(SumII(j))*Area;
+    else
+    SumIII(j)=(SumII(j)-SumII(j-1))*Area;
+    end
+    
+DNN(j)= DSS(j) + DLL(j) + DII(j);
+%I(j)= (S(j-1)-Vaccination(j-1)/5)*beta2*DII(j-1);
+%P(j)= DII(j-1)*scale;
+R(j)=sigma*betaD*DSS(j)/((sigma+birth)*(alpha+birth));
+j=j+1;
+end   
+
+end    
+ydot=[SumIII(:),R(:),DSS(:),DLL(:),DII(:),DNN(:)];
